@@ -118,9 +118,11 @@ const EventsScreen = ({ navigation }) => {
             resizeMode="cover"
           />
         ) : (
-          <View style={styles.placeholderImage}>
-            <Icon name="event" size={40} color="#ccc" />
-          </View>
+          <Image 
+            source={require('../../assets/etkinlik.png')} 
+            style={styles.eventImage}
+            resizeMode="cover"
+          />
         )}
       </View>
       

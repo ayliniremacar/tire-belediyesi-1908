@@ -1,15 +1,17 @@
+import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
-
-// URL polyfill for React Native
-if (typeof global.URL === 'undefined') {
-  global.URL = require('url').URL;
-}
 
 // Supabase configuration
 const supabaseUrl = 'https://sfulbvzijpvrkbqzadtl.supabase.co';
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmdWxidnppanB2cmticXphZHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2OTYyMjEsImV4cCI6MjA2OTI3MjIyMX0.IYe5Hul_KD05o_E9ufrI9d-PT9UBBcOgifqAFJjZ8tg';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false
+  }
+});
 
 // Database tables structure based on actual Supabase database
 export const TABLES = {

@@ -1,4 +1,5 @@
-import { registerRootComponent } from 'expo';
+import 'react-native-url-polyfill/auto';
+import { AppRegistry } from 'react-native';
 import App from './src/App';
 
 // Remote update hatalarını yakala
@@ -13,4 +14,4 @@ if (__DEV__) {
   };
 }
 
-registerRootComponent(App); 
+AppRegistry.registerComponent('main', () => App); 
