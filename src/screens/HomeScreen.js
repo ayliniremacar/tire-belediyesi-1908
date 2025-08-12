@@ -1,13 +1,94 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getWeatherUrl } from '../config/weather';
 
 const HomeScreen = ({ navigation }) => {
-  const municipality = "Tire Belediyesi";
-  const weather = {
-    location: "Şehir Merkezi",
+  const municipality = "Tire Belediyesi'";
+  const appVersion = "1.0.15"; // Sürüm bilgisi
+  const [weather, setWeather] = useState({
+    location: "Tire",
     temperature: null,
-    status: "Hava durumu alınamadı"
+    status: "Hava durumu yükleniyor...",
+    humidity: null,
+    windSpeed: null
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchWeather();
+  }, []);
+
+  const fetchWeather = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("https://api.openweathermap.org/data/2.5/weather?q=Tire,tr&appid=0bbf76040ca295b36ed45c2d66937050&units=metric&lang=tr");
+      const data = await response.json();
+      
+      console.log('Hava durumu verisi:', data); // Debug için
+      
+      if (data.cod === 200) {
+        // Hava durumuna göre açık/kapalı durumunu belirle
+        const weatherStatus = data.weather[0].main.toLowerCase();
+        const weatherDescription = data.weather[0].description.toLowerCase();
+        
+        // Açık hava durumları
+        const clearConditions = [
+          'clear', 'sunny', 'açık', 'güneşli', 'parçalı bulutlu', 'az bulutlu'
+        ];
+        
+        // Kapalı hava durumları
+        const cloudyConditions = [
+          'clouds', 'cloudy', 'overcast', 'kapalı', 'bulutlu', 'yağmurlu', 'kar', 'sis', 'duman'
+        ];
+        
+        let isClear = false;
+        
+        // Açık durumları kontrol et
+        if (clearConditions.some(condition => 
+          weatherStatus.includes(condition) || weatherDescription.includes(condition)
+        )) {
+          isClear = true;
+        }
+        
+        // Kapalı durumları kontrol et
+        if (cloudyConditions.some(condition => 
+          weatherStatus.includes(condition) || weatherDescription.includes(condition)
+        )) {
+          isClear = false;
+        }
+        
+        const weatherDisplay = isClear ? 'Açık' : 'Kapalı';
+        
+        setWeather({
+          location: "Tire",
+          temperature: Math.round(data.main.temp),
+          status: weatherDisplay,
+          humidity: data.main.humidity,
+          windSpeed: Math.round(data.wind.speed * 3.6) // m/s'den km/h'ye çevir
+        });
+      } else {
+        console.log('API hatası:', data);
+        setWeather({
+          location: "Tire",
+          temperature: null,
+          status: "Hava durumu alınamadı",
+          humidity: null,
+          windSpeed: null
+        });
+      }
+    } catch (error) {
+      console.error('Hava durumu hatası:', error);
+      setWeather({
+        location: "Tire",
+        temperature: null,
+        status: "Hava durumu alınamadı",
+        humidity: null,
+        windSpeed: null
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   const shortcuts = [
     { title: "Nasıl Gelinir", icon: 'directions', color: '#4CAF50', onPress: () => navigation.navigate('HowToGetThere') },
@@ -27,15 +108,23 @@ const HomeScreen = ({ navigation }) => {
     <ScrollView style={styles.container}>
       {/* Karşılama Alanı */}
       <View style={styles.header}>
-        <View style={styles.logo} />
+        <View style={styles.logoContainer}>
+          <Image source={require('../../assets/logoyeni.png')} style={styles.logo} resizeMode="contain" />
+        </View>
         <Text style={styles.headerText}>{municipality}ne{"\n"}Hoşgeldiniz</Text>
       </View>
 
-      {/* Hava Durumu */}
-      <View style={styles.weatherCard}>
-        <Text style={styles.weatherTitle}>{weather.location}</Text>
-        <Text style={styles.weatherDegree}>{weather.temperature ? `${weather.temperature}°C` : '--°C'}</Text>
-        <Text style={styles.weatherInfo}>{weather.status}</Text>
+             {/* Hava Durumu */}
+       <View style={styles.weatherCard}>
+        <View style={styles.weatherMain}>
+          <Text style={styles.weatherLocation}>Şehir Merkezi</Text>
+          <Text style={styles.weatherDegree}>
+            {loading ? '...' : (weather.temperature ? `${weather.temperature}°C` : '--°C')}
+          </Text>
+          <Text style={styles.weatherStatus}>
+            {loading ? 'Yükleniyor...' : weather.status}
+          </Text>
+        </View>
       </View>
 
       {/* Hızlı Erişim */}
@@ -49,9 +138,9 @@ const HomeScreen = ({ navigation }) => {
         ))}
       </ScrollView>
 
-      {/* Tanıtım Görseli - Camii */}
+      {/* Tanıtım Görseli - Tire */}
       <Image 
-        source={{ uri: 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80' }} 
+        source={require('../../assets/tire.jpg')} 
         style={styles.promoImage} 
         resizeMode="cover"
         onError={(error) => console.log('Image loading error:', error)}
@@ -64,6 +153,11 @@ const HomeScreen = ({ navigation }) => {
         <Text style={styles.aboutText}>
           {about.description}
         </Text>
+      </View>
+      
+      {/* Sürüm Bilgisi */}
+      <View style={styles.versionContainer}>
+        <Text style={styles.versionText}>Sürüm: {appVersion}</Text>
       </View>
     </ScrollView>
   );
@@ -85,17 +179,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4
   },
-  logo: { 
-    width: 48, 
-    height: 48, 
-    borderRadius: 24, 
-    backgroundColor: 'white', 
+  logoContainer: {
+    width: 48,
+    height: 48,
     marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2
+    overflow: 'hidden',
+    backgroundColor: 'transparent'
+  },
+  logo: { 
+    width: '100%', 
+    height: '100%',
+    backgroundColor: 'transparent'
   },
   headerText: { 
     color: 'white', 
@@ -106,7 +200,7 @@ const styles = StyleSheet.create({
   weatherCard: { 
     backgroundColor: 'white', 
     margin: 16, 
-    borderRadius: 12, 
+    borderRadius: 10, 
     padding: 16, 
     elevation: 3,
     shadowColor: '#000',
@@ -114,20 +208,53 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6
   },
+  weatherHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
   weatherTitle: { 
-    fontSize: 16, 
+    fontSize: 18, 
     color: '#666',
-    marginBottom: 4
+    marginLeft: 4,
+    fontWeight: '500'
+  },
+  weatherMain: {
+    marginBottom: 12
+  },
+  weatherLocation: { 
+    fontSize: 18, 
+    color: '#666',
+    marginBottom: 4,
+    textAlign: 'left'
   },
   weatherDegree: { 
-    fontSize: 28, 
+    fontSize: 32, 
     fontWeight: 'bold',
     color: '#2E5266',
     marginBottom: 4
   },
-  weatherInfo: { 
+  weatherStatus: { 
     fontSize: 14, 
-    color: '#999' 
+    color: '#666',
+    fontWeight: 'normal',
+    marginTop: 4
+  },
+  weatherDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 12
+  },
+  weatherDetail: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  weatherDetailText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4
   },
   sectionTitle: { 
     fontSize: 20, 
@@ -193,6 +320,16 @@ const styles = StyleSheet.create({
     marginTop: 12,
     lineHeight: 22,
     paddingHorizontal: 16
+  },
+  versionContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginBottom: 20
+  },
+  versionText: {
+    fontSize: 14,
+    color: '#888',
+    fontWeight: '500'
   },
 });
 

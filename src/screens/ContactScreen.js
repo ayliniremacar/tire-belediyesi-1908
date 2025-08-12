@@ -4,29 +4,13 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const ContactScreen = ({ navigation }) => {
   const contactInfo = {
-    phone: "(0312) 555 0123",
-    email: "iletisim@xbelediyesi.gov.tr",
-    address: "Cumhuriyet Mah. Belediye Cad. No:1",
-    whatsapp: "(0312) 555 0124"
+    phone: "+90 444 35 03",
+    email: "tirebel@tire.bel.tr",
+    address: "29 EKİM CAD. CUMHURİYET MAH. NO:19 35900 İZMİR/TİRE",
+    whatsapp: "+90 444 35 03"
   };
 
-  const departments = [
-    {
-      name: "İmar ve Şehircilik",
-      phone: "(0312) 555 0125",
-      email: "imar@xbelediyesi.gov.tr"
-    },
-    {
-      name: "Çevre ve Temizlik",
-      phone: "(0312) 555 0126",
-      email: "cevre@xbelediyesi.gov.tr"
-    },
-    {
-      name: "Kültür ve Sosyal İşler",
-      phone: "(0312) 555 0127",
-      email: "kultur@xbelediyesi.gov.tr"
-    }
-  ];
+
 
   const makePhoneCall = (phoneNumber) => {
     Linking.openURL(`tel:${phoneNumber}`);
@@ -129,26 +113,7 @@ const ContactScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Departments Section */}
-      <View style={styles.departmentsSection}>
-        <Text style={styles.sectionTitle}>Departmanlar</Text>
-        
-        <View style={styles.departmentsList}>
-          {departments.map((dept, index) => (
-            <View key={index} style={styles.departmentCard}>
-              <View style={styles.departmentInfo}>
-                <Text style={styles.departmentName}>{dept.name}</Text>
-                <TouchableOpacity onPress={() => makePhoneCall(dept.phone)}>
-                  <Text style={styles.departmentPhone}>{dept.phone}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => sendEmail(dept.email)}>
-                  <Text style={styles.departmentEmail}>{dept.email}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
+
     </ScrollView>
   );
 };
@@ -219,48 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  departmentsSection: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2E5266',
-    marginBottom: 16,
-  },
-  departmentsList: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  departmentCard: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  departmentInfo: {
-    flex: 1,
-  },
-  departmentName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2E5266',
-    marginBottom: 8,
-  },
-  departmentPhone: {
-    fontSize: 14,
-    color: '#1976D2',
-    marginBottom: 4,
-  },
-  departmentEmail: {
-    fontSize: 14,
-    color: '#1976D2',
-  },
+
 });
 
 export default ContactScreen; 

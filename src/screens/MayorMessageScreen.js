@@ -11,12 +11,12 @@ import {
 
 const MayorMessageScreen = () => {
   const data = {
-    name: "Ahmet YILMAZ",
+    name: "Hayati Okuroğlu",
     title: "Tire Belediye Başkanı",
-    photo: "https://via.placeholder.com/100",
-                    message: "Sevgili Tire Belediyesi sakinleri, bu modern mobil uygulamamız ile...",
-    phone: "(0312) 555 0123",
-    email: "baskan@xbelediyesi.gov.tr"
+    photo: require('../../assets/baskan.jpg'),
+    message: "Sevgili Tire Belediyesi sakinleri, bu modern mobil uygulamamız ile...",
+    phone: "444 35 03",
+    email: "tirebel@tire.bel.tr"
   };
 
   const openEmail = () => {
@@ -31,7 +31,13 @@ const MayorMessageScreen = () => {
     <ScrollView style={styles.container}>
       {/* Mayor Info */}
       <View style={styles.mayorInfoContainer}>
-        <Image source={{ uri: data.photo }} style={styles.avatar} />
+        <Image 
+          source={data.photo} 
+          style={styles.avatar}
+          onError={(error) => console.log('Başkan resmi yükleme hatası:', error)}
+          onLoad={() => console.log('Başkan resmi başarıyla yüklendi')}
+          resizeMode="cover"
+        />
         <Text style={styles.name}>{data.name}</Text>
         <Text style={styles.title}>{data.title}</Text>
       </View>

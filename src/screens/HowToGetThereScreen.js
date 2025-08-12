@@ -6,14 +6,43 @@ import {
   Text,
   TouchableOpacity,
   Dimensions,
+  Linking,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const { width } = Dimensions.get('window');
 
 const HowToGetThereScreen = ({ navigation }) => {
-  const address = "Cumhuriyet Mahallesi, Belediye Caddesi No:1, 06000 Merkez";
+  const address = "Cumhuriyet, 29 Ekim Caddesi No: 19, 35900 Tire/İzmir";
+  
+  const openInGoogleMaps = () => {
+    const latitude = 38.08712743777985;
+    const longitude = 27.731662796686482;
+    
+    // Direkt rota başlamasını engellemek için dir_action=navigate parametresini kaldırdım
+    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        // Google Maps yoksa web tarayıcısında aç
+        const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+        Linking.openURL(webUrl);
+      }
+    }).catch(err => {
+      console.error('Google Maps açılırken hata:', err);
+      Alert.alert('Hata', 'Google Maps açılamadı');
+    });
+  };
   const transportation = [
+    {
+      type: "Tren",
+      icon: "train",
+      description: "İzmir-Tire arası düzenli tren seferleri ile ulaşabilirsiniz",
+      details: ["Günde 8 sefer", "Yaklaşık 1 saat süre", "Bilet ücreti: 15 TL"]
+    },
     {
       type: "Otobüs",
       icon: "directions-bus",
@@ -25,12 +54,6 @@ const HowToGetThereScreen = ({ navigation }) => {
       icon: "directions-car",
       description: "Merkez konumunda otopark imkanı mevcuttur",
       details: ["Ücretsiz otopark", "200 araç kapasiteli", "7/24 güvenlik"]
-    },
-    {
-      type: "Yürüyerek",
-      icon: "directions-walk",
-      description: "Şehir merkezinden sadece 10 dakika yürüme mesafesi",
-      details: ["Yaya yolları mevcut", "Engelli erişimi", "Güvenli güzergah"]
     }
   ];
 
@@ -49,15 +72,7 @@ const HowToGetThereScreen = ({ navigation }) => {
         <TouchableOpacity 
           style={styles.mapButton} 
           activeOpacity={0.7}
-          onPress={() => navigation.navigate('Map', {
-            spot: {
-              ad: 'Tire Belediyesi',
-              aciklama: 'Tire Belediyesi merkez binası',
-              enlem: 38.0931,
-              boylam: 27.7519,
-              kategori: 'belediye'
-            }
-          })}
+          onPress={openInGoogleMaps}
         >
           <Text style={styles.mapButtonText}>Haritada Göster</Text>
         </TouchableOpacity>
@@ -68,7 +83,7 @@ const HowToGetThereScreen = ({ navigation }) => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.transportationScroll}>
         {transportation.map((option, index) => (
           <View key={index} style={styles.transportationCard}>
-            <Icon name={option.icon} size={32} color="#1976D2" />
+            <Icon name={option.icon} size={48} color="#1976D2" />
             <Text style={styles.transportationType}>{option.type}</Text>
             <Text style={styles.transportationDescription}>{option.description}</Text>
             {option.details.map((detail, idx) => (
@@ -120,7 +135,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   addressText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
     marginBottom: 16,
   },
@@ -144,34 +159,38 @@ const styles = StyleSheet.create({
   },
   transportationScroll: {
     paddingLeft: 20,
-    paddingVertical: 10,
+    paddingVertical: 16,
   },
   transportationCard: {
-    width: width * 0.7,
+    width: width * 0.85,
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 16,
-    elevation: 2,
+    borderRadius: 16,
+    padding: 24,
+    marginRight: 20,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    minHeight: 220,
   },
   transportationType: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#2E5266',
-    marginTop: 8,
+    marginTop: 14,
   },
   transportationDescription: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-    marginVertical: 8,
+    marginVertical: 10,
+    lineHeight: 22,
   },
   transportationDetail: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#999',
+    marginTop: 5,
+    lineHeight: 18,
   },
 });
 

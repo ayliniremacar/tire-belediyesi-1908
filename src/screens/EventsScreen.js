@@ -27,19 +27,42 @@ const EventsScreen = ({ navigation }) => {
   const fetchEtkinlikler = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('etkinlikler')
-        .select('*')
-        .order('tarih', { ascending: true });
-
-      if (error) {
-        console.error('Etkinlikler yüklenirken hata:', error);
-        setEtkinlikler(getDemoEvents());
-      } else {
-        setEtkinlikler(data || getDemoEvents());
+      
+      // İzmir Belediyesi API'sinden etkinlikleri çek
+      const response = await fetch('https://openapi.izmir.bel.tr/api/ibb/kultursanat/etkinlikler');
+      
+      if (!response.ok) {
+        throw new Error('API yanıt vermedi');
       }
+      
+      const apiData = await response.json();
+      
+      // API verilerini uygulama formatına dönüştür
+      const transformedEvents = apiData.map((event, index) => ({
+        id: event.Id || index + 1,
+        ad: event.Adi || 'İsimsiz Etkinlik',
+        aciklama: event.KisaAciklama || 'Açıklama bulunmuyor',
+                 fotograf: event.Resim || event.KucukAfis || null,
+         fotograf_yuksek_kalite: event.Resim || null, // Yüksek kaliteli resim için
+        tarih: event.EtkinlikBaslamaTarihi || event.EtkinlikBitisTarihi || new Date().toISOString(),
+        bitis_tarihi: event.EtkinlikBitisTarihi || null,
+        baslama_saati: event.EtkinlikBaslamaTarihi ? new Date(event.EtkinlikBaslamaTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null,
+        bitis_saati: event.EtkinlikBitisTarihi ? new Date(event.EtkinlikBitisTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null,
+        tur: event.Tur || 'DİĞER',
+        etkinlik_merkezi: event.EtkinlikMerkezi || 'Belirtilmemiş',
+        ucretsiz_mi: event.UcretsizMi || false,
+        bilet_linki: event.BiletSatisLinki || null,
+        etkinlik_url: event.EtkinlikUrl || null,
+        enlem: null, // API'de koordinat bilgisi yok
+        boylam: null,
+        telefon_numarasi: null,
+        adres: event.EtkinlikMerkezi || 'Adres belirtilmemiş'
+      }));
+      
+      setEtkinlikler(transformedEvents);
+      
     } catch (error) {
-      console.error('Beklenmeyen hata:', error);
+      console.error('Etkinlikler yüklenirken hata:', error);
       setEtkinlikler(getDemoEvents());
     } finally {
       setLoading(false);
@@ -104,27 +127,56 @@ const EventsScreen = ({ navigation }) => {
     });
   };
 
+  const getEventTypeColor = (tur) => {
+    switch (tur?.toUpperCase()) {
+      case 'KONSER':
+        return '#FF5722';
+      case 'SERGİ':
+        return '#4CAF50';
+      case 'TİYATRO':
+        return '#9C27B0';
+      case 'FESTİVAL':
+        return '#FF9800';
+      case 'DİĞER':
+      default:
+        return '#607D8B';
+    }
+  };
+
   const renderEventCard = ({ item }) => (
     <TouchableOpacity
       style={styles.eventCard}
       onPress={() => onEventPress(item)}
       activeOpacity={0.8}
     >
-      <View style={styles.eventImageContainer}>
-        {item.fotograf ? (
-          <Image 
-            source={{ uri: item.fotograf }} 
-            style={styles.eventImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <Image 
-            source={require('../../assets/etkinlik.png')} 
-            style={styles.eventImage}
-            resizeMode="cover"
-          />
-        )}
-      </View>
+             <View style={styles.eventImageContainer}>
+         {item.fotograf_yuksek_kalite || item.fotograf ? (
+           <Image 
+             source={{ 
+               uri: item.fotograf_yuksek_kalite || item.fotograf,
+               headers: {
+                 'User-Agent': 'TireBelediyesi/1.0'
+               }
+             }} 
+             style={styles.eventImage}
+             resizeMode="cover"
+             defaultSource={require('../../assets/etkinlik.png')}
+             onError={(error) => {
+               console.log('Resim yükleme hatası:', error);
+               // Yüksek kaliteli resim yüklenemezse küçük resmi dene
+               if (item.fotograf_yuksek_kalite && item.fotograf && item.fotograf_yuksek_kalite !== item.fotograf) {
+                 // Küçük resmi yükle
+               }
+             }}
+           />
+         ) : (
+           <Image 
+             source={require('../../assets/etkinlik.png')} 
+             style={styles.eventImage}
+             resizeMode="cover"
+           />
+         )}
+       </View>
       
       <View style={styles.eventContent}>
         <View style={styles.eventHeader}>
@@ -135,17 +187,42 @@ const EventsScreen = ({ navigation }) => {
           </View>
         </View>
         
+        {item.baslama_saati && (
+          <View style={styles.timeContainer}>
+            <Icon name="access-time" size={14} color="#666" />
+            <Text style={styles.eventTime}>{item.baslama_saati}</Text>
+            {item.bitis_saati && (
+              <Text style={styles.eventTime}> - {item.bitis_saati}</Text>
+            )}
+          </View>
+        )}
+        
         <Text style={styles.eventDescription} numberOfLines={2}>
           {item.aciklama}
         </Text>
         
         <View style={styles.eventFooter}>
-          {item.adres && (
-            <View style={styles.locationContainer}>
-              <Icon name="location-on" size={14} color="#666" />
-              <Text style={styles.locationText}>{item.adres}</Text>
-            </View>
-          )}
+          <View style={styles.footerLeft}>
+            {item.adres && (
+              <View style={styles.locationContainer}>
+                <Icon name="location-on" size={14} color="#666" />
+                <Text style={styles.locationText}>{item.adres}</Text>
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.footerRight}>
+            {item.tur && (
+              <View style={[styles.eventTypeChip, { backgroundColor: getEventTypeColor(item.tur) }]}>
+                <Text style={styles.eventTypeText}>{item.tur}</Text>
+              </View>
+            )}
+            {item.ucretsiz_mi && (
+              <View style={styles.freeChip}>
+                <Text style={styles.freeChipText}>ÜCRETSİZ</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -153,11 +230,6 @@ const EventsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Etkinlikler</Text>
-      </View>
-
       {/* Events List */}
       <FlatList
         data={etkinlikler}
@@ -214,11 +286,12 @@ const styles = StyleSheet.create({
   },
   eventImageContainer: {
     width: '100%',
-    height: 180,
+    height: 200,
   },
   eventImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#f0f0f0',
   },
   placeholderImage: {
     width: '100%',
@@ -262,6 +335,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  footerLeft: {
+    flex: 1,
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -271,6 +353,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginLeft: 4,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  eventTime: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  eventTypeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  eventTypeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  freeChip: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  freeChipText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
   },
   separator: {
     height: 12,

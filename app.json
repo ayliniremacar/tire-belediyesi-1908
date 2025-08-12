@@ -2,16 +2,17 @@
   "expo": {
     "name": "Tire Belediyesi",
     "slug": "tire-belediyesi",
-    "version": "1.0.0",
+    "version": "1.0.15",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/logoyeni.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
+      "assets/**/*",
       "**/*"
     ],
     "ios": {
@@ -20,10 +21,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.tirebelediyesi.app"
+      "package": "com.tirebelediyesi.app",
+      "splash": {
+        "image": "./assets/logoyeni.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",

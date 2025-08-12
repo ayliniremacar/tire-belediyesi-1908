@@ -1,80 +1,44 @@
-// Supabase Veri Kontrolü
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
-// URL polyfill for Node.js
-if (typeof global.URL === 'undefined') {
-  global.URL = require('url').URL;
-}
-
-// Supabase configuration
 const supabaseUrl = 'https://sfulbvzijpvrkbqzadtl.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmdWxidnppanB2cmticXphZHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2OTYyMjEsImV4cCI6MjA2OTI3MjIyMX0.IYe5Hul_KD05o_E9ufrI9d-PT9UBBcOgifqAFJjZ8tg';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-console.log('🔍 Supabase Veri Kontrolü Başlatılıyor...');
-
-async function checkSupabaseData() {
+async function checkAllGeziNoktalari() {
   try {
-    // Tüm tabloları kontrol et
-    const tables = [
-      'gezi_noktalari',
-      'rotalar', 
-      'influencerlar',
-      'etkinlikler',
-      'events', // İngilizce tablo adı da olabilir
-      'tourism_spots', // İngilizce tablo adı da olabilir
-      'travel_routes', // İngilizce tablo adı da olabilir
-      'emergency_contacts', // İngilizce tablo adı da olabilir
-      'duty_pharmacies', // İngilizce tablo adı da olabilir
-      'news', // İngilizce tablo adı da olabilir
-      'mayor_messages', // İngilizce tablo adı da olabilir
-      'contact_info' // İngilizce tablo adı da olabilir
-    ];
+    console.log('🔍 Supabase\'deki tüm gezi noktaları kontrol ediliyor...');
     
-    console.log('\n📋 Mevcut tablolar ve veriler kontrol ediliyor...');
-    
-    for (const table of tables) {
-      try {
-        const { data, error } = await supabase
-          .from(table)
-          .select('*');
-        
-        if (error) {
-          console.log(`❌ ${table} tablosu erişilemiyor:`, error.message);
-        } else {
-          console.log(`✅ ${table} tablosu: ${data.length} kayıt bulundu`);
-          if (data.length > 0) {
-            console.log(`   İlk kayıt:`, JSON.stringify(data[0], null, 2));
-          }
-        }
-      } catch (err) {
-        console.log(`❌ ${table} tablosu hatası:`, err.message);
-      }
+    const { data, error, count } = await supabase
+      .from('gezi_noktalari')
+      .select('*', { count: 'exact' });
+
+    if (error) {
+      console.error('❌ Hata:', error);
+      return;
     }
-    
-    // Tüm tabloları listele
-    console.log('\n🔍 Tüm tablolar listeleniyor...');
-    try {
-      const { data, error } = await supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public');
-      
-      if (!error && data) {
-        console.log('📋 Mevcut tablolar:');
-        data.forEach(table => {
-          console.log(`   - ${table.table_name}`);
-        });
+
+    console.log(`📊 Toplam kayıt sayısı: ${count}`);
+    console.log('📋 Tüm kayıtlar:');
+    console.log(JSON.stringify(data, null, 2));
+
+    // Kategorilere göre gruplandır
+    const categories = {};
+    data.forEach(item => {
+      if (!categories[item.kategori]) {
+        categories[item.kategori] = [];
       }
-    } catch (err) {
-      console.log('❌ Tablo listesi alınamadı:', err.message);
-    }
-    
+      categories[item.kategori].push(item);
+    });
+
+    console.log('\n📂 Kategorilere göre dağılım:');
+    Object.keys(categories).forEach(category => {
+      console.log(`${category}: ${categories[category].length} kayıt`);
+    });
+
   } catch (error) {
-    console.log('❌ Genel hata:', error.message);
+    console.error('❌ Beklenmeyen hata:', error);
   }
 }
 
-// Kontrolü çalıştır
-checkSupabaseData(); 
+checkAllGeziNoktalari(); 

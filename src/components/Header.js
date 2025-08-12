@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { colors } from '../styles/colors';
 
-const Header = ({ title, showLogo = false }) => {
+const Header = ({ title, showLogo = false, showTitle = true }) => {
   return (
     <View style={styles.header}>
       {showLogo && (
@@ -13,7 +13,7 @@ const Header = ({ title, showLogo = false }) => {
           </View>
         </View>
       )}
-      <Text style={styles.title}>{title}</Text>
+      {showTitle && <Text style={styles.title}>{title}</Text>}
     </View>
   );
 };

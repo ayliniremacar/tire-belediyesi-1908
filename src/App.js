@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { StatusBar } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 // Remote update devre dışı bırakma
@@ -22,6 +23,7 @@ import EventDetailScreen from './screens/EventDetailScreen';
 import TourismScreen from './screens/TourismScreen';
 import TourismSpotDetailScreen from './screens/TourismSpotDetailScreen';
 import TravelRoutesScreen from './screens/TravelRoutesScreen';
+import RouteDetailScreen from './screens/RouteDetailScreen';
 import MapScreen from './screens/MapScreen';
 import EmergencyScreen from './screens/EmergencyScreen';
 import DutyPharmaciesScreen from './screens/DutyPharmaciesScreen';
@@ -45,14 +47,23 @@ function HomeStackNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerLeftContainerStyle: {
+          paddingLeft: 10,
+        },
+        headerBackTitleVisible: false,
+        headerBackImage: () => (
+          <Icon name="arrow-back" size={30} color="#fff" />
+        ),
       }}>
-      <Stack.Screen name="Ana Sayfa" component={HomeScreen} />
+      <Stack.Screen name="Ana Sayfa" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MayorMessage" component={MayorMessageScreen} options={{ title: 'Başkanın Mesajı' }} />
       <Stack.Screen name="Emergency" component={EmergencyScreen} options={{ title: 'Acil Durumlar' }} />
       <Stack.Screen name="DutyPharmacies" component={DutyPharmaciesScreen} options={{ title: 'Nöbetçi Eczaneler' }} />
       <Stack.Screen name="Contact" component={ContactScreen} options={{ title: 'Bize Ulaşın' }} />
       <Stack.Screen name="HowToGetThere" component={HowToGetThereScreen} options={{ title: 'Nasıl Gelinir' }} />
       <Stack.Screen name="TravelRoutes" component={TravelRoutesScreen} options={{ title: 'Gezi Rotaları' }} />
+      <Stack.Screen name="RouteDetail" component={RouteDetailScreen} options={{ title: 'Rota Detayı' }} />
+      <Stack.Screen name="TourismSpotDetail" component={TourismSpotDetailScreen} options={{ title: 'Gezi Noktası Detayı' }} />
       <Stack.Screen name="InfluencerRoutes" component={InfluencerRoutesScreen} options={{ title: 'Influencer Rota Önerileri' }} />
     </Stack.Navigator>
   );
@@ -70,6 +81,13 @@ function EventsStackNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerLeftContainerStyle: {
+          paddingLeft: 10,
+        },
+        headerBackTitleVisible: false,
+        headerBackImage: () => (
+          <Icon name="arrow-back" size={30} color="#fff" />
+        ),
       }}>
       <Stack.Screen name="EventsList" component={EventsScreen} options={{ title: 'Etkinlikler' }} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Etkinlik Detayı' }} />
@@ -89,10 +107,18 @@ function TourismStackNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerLeftContainerStyle: {
+          paddingLeft: 10,
+        },
+        headerBackTitleVisible: false,
+        headerBackImage: () => (
+          <Icon name="arrow-back" size={30} color="#fff" />
+        ),
       }}>
       <Stack.Screen name="TourismSpots" component={TourismScreen} options={{ title: 'Gezi Noktaları' }} />
       <Stack.Screen name="TourismSpotDetail" component={TourismSpotDetailScreen} options={{ title: 'Gezi Noktası Detayı' }} />
       <Stack.Screen name="TravelRoutes" component={TravelRoutesScreen} options={{ title: 'Gezi Rotaları' }} />
+      <Stack.Screen name="RouteDetail" component={RouteDetailScreen} options={{ title: 'Rota Detayı' }} />
       <Stack.Screen name="HowToGetThere" component={HowToGetThereScreen} options={{ title: 'Nasıl Gelinir' }} />
       <Stack.Screen name="InfluencerRoutes" component={InfluencerRoutesScreen} options={{ title: 'Influencer Rota Önerileri' }} />
     </Stack.Navigator>
@@ -111,8 +137,16 @@ function MapStackNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerLeftContainerStyle: {
+          paddingLeft: 10,
+        },
+        headerBackTitleVisible: false,
+        headerBackImage: () => (
+          <Icon name="arrow-back" size={30} color="#fff" />
+        ),
       }}>
       <Stack.Screen name="MapView" component={MapScreen} options={{ title: 'Harita' }} />
+      <Stack.Screen name="TourismSpotDetail" component={TourismSpotDetailScreen} options={{ title: 'Gezi Noktası Detayı' }} />
     </Stack.Navigator>
   );
 }
@@ -151,8 +185,16 @@ function TabNavigator() {
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <TabNavigator />
-    </NavigationContainer>
+    <>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#2E5266"
+        hidden={false}
+        translucent={false}
+      />
+      <NavigationContainer>
+        <TabNavigator />
+      </NavigationContainer>
+    </>
   );
 } 

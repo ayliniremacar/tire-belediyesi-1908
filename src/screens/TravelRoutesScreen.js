@@ -1,71 +1,144 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { supabase } from '../config/supabase';
 
-const TravelRoutesScreen = ({ navigation }) => {
-  const routes = [
-    {
-      name: "Tarihi Tur Rotası",
-      description: "Şehrimizin tarihi yerlerini keşfedin",
-      duration: "3-4 saat",
-      distance: "2.5 km",
-      difficulty: "Kolay",
-      stops: ["Tarihi Ulu Cami", "Antik Kale", "Tarihi Hamam"],
-      color: "#f44336"
-    },
-    {
-      name: "Kültür ve Sanat Rotası",
-      description: "Kültürel mekanları ziyaret edin",
-      duration: "2-3 saat",
-      distance: "1.8 km",
-      difficulty: "Kolay",
-      stops: ["Kültür Merkezi", "Sanat Galerisi", "Amfi Tiyatro"],
-      color: "#3f51b5"
-    },
-    {
-      name: "Lezzet Rotası",
-      description: "Yerel lezzetleri tadın",
-      duration: "4-5 saat",
-      distance: "3.2 km",
-      difficulty: "Orta",
-      stops: ["Yerel Lezzet Evi", "Tatlı Dükkanı", "Pazar Yeri"],
-      color: "#4caf50"
+const TravelRoutesScreen = ({ navigation, route }) => {
+  const [routes, setRoutes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRouteId, setSelectedRouteId] = useState(null);
+
+  useEffect(() => {
+    fetchRoutes();
+    
+    // Eğer route parametrelerinden seçili rota ID'si geliyorsa
+    if (route?.params?.selectedRouteId) {
+      setSelectedRouteId(route.params.selectedRouteId);
     }
-  ];
+  }, [route?.params?.selectedRouteId]);
+
+  const fetchRoutes = async () => {
+    try {
+      setLoading(true);
+      
+      // Rotaları çek
+      const { data: routesData, error: routesError } = await supabase
+        .from('rotalar')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (routesError) {
+        console.error('Rotalar yüklenirken hata:', routesError);
+        Alert.alert('Hata', 'Rotalar yüklenemedi');
+        return;
+      }
+
+      console.log('Rotalar verisi:', routesData);
+
+      // Her rota için gezi noktalarını çek
+      const routesWithStops = await Promise.all(
+        routesData.map(async (route) => {
+          // Rota açıklamasını 50 kelimeye sınırla
+          const description = route.aciklama 
+            ? route.aciklama.split(' ').slice(0, 50).join(' ') + (route.aciklama.split(' ').length > 50 ? '...' : '')
+            : 'Açıklama bulunamadı';
+
+          let stopsData = [];
+          
+          // gezi_nok_id alanını parse et
+          if (route.gezi_nok_id) {
+            try {
+              // Eğer string ise virgülle ayrılmış ID'leri parse et
+              let geziNokIds = [];
+              if (typeof route.gezi_nok_id === 'string') {
+                geziNokIds = route.gezi_nok_id.split(',').map(id => id.trim()).filter(id => id);
+              } else if (Array.isArray(route.gezi_nok_id)) {
+                geziNokIds = route.gezi_nok_id;
+              } else if (typeof route.gezi_nok_id === 'number') {
+                geziNokIds = [route.gezi_nok_id.toString()];
+              }
+
+              console.log(`Rota ${route.id} için gezi nokta ID'leri:`, geziNokIds);
+
+              if (geziNokIds.length > 0) {
+                // İlk 3 gezi noktasını çek
+                const { data: stops, error: stopsError } = await supabase
+                  .from('gezi_noktalari')
+                  .select('id, ad, aciklama, enlem, boylam')
+                  .in('id', geziNokIds.slice(0, 3));
+
+                if (stopsError) {
+                  console.error('Gezi noktaları yüklenirken hata:', stopsError);
+                } else {
+                  stopsData = stops || [];
+                  console.log(`Rota ${route.id} için gezi noktaları:`, stopsData);
+                }
+              }
+            } catch (parseError) {
+              console.error('gezi_nok_id parse hatası:', parseError);
+            }
+          }
+
+          return {
+            id: route.id,
+            name: route.rota_adi || route.ad || route.name || 'Rota',
+            description: description,
+            stops: stopsData.map(stop => stop.ad),
+            color: route.renk || route.color || '#1976D2',
+            routeData: route,
+            stopsData: stopsData
+          };
+        })
+      );
+
+      console.log('İşlenmiş rotalar:', routesWithStops);
+      setRoutes(routesWithStops);
+      
+    } catch (error) {
+      console.error('Beklenmeyen hata:', error);
+      Alert.alert('Hata', 'Veriler yüklenirken bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderRouteCard = ({ item }) => (
     <View style={styles.routeCard}>
       <Text style={styles.routeName}>{item.name}</Text>
       <Text style={styles.routeDescription}>{item.description}</Text>
-      <View style={styles.routeDetails}>
-        <Text style={[styles.difficultyChip, { backgroundColor: item.color }]}>{item.difficulty}</Text>
-        <Text style={styles.routeInfo}>{item.duration} • {item.distance}</Text>
-      </View>
       <View style={styles.stopsContainer}>
-        {item.stops.map((stop, index) => (
-          <Text key={index} style={styles.stopChip}>{stop}</Text>
-        ))}
+        {item.stops.length > 0 ? (
+          item.stops.slice(0, 3).map((stop, index) => (
+            <Text 
+              key={index} 
+              style={[styles.stopChip, { maxWidth: 120 }]} 
+              numberOfLines={1} 
+              ellipsizeMode="tail"
+            >
+              {stop.length > 12 ? stop.substring(0, 12) + '...' : stop}
+            </Text>
+          ))
+        ) : (
+          <Text style={styles.noStopsText}>Bu rotada henüz gezi noktası bulunmuyor</Text>
+        )}
       </View>
       <View style={styles.actionButtons}>
         <TouchableOpacity 
           style={styles.mapButton}
-          onPress={() => navigation.navigate('Map', {
-            spot: {
-              ad: item.name,
-              aciklama: item.description,
-              enlem: 38.0931, // İlk durağın koordinatları
-              boylam: 27.7519,
-              kategori: 'rota'
-            }
+          onPress={() => navigation.navigate('RouteDetail', {
+            routeId: item.id,
+            routeName: item.name
           })}
         >
-          <Text style={styles.mapButtonText}>Rotaya Git</Text>
+          <Text style={styles.mapButtonText}>Rotayı Keşfet</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -89,13 +162,20 @@ const TravelRoutesScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={routes}
-        renderItem={renderRouteCard}
-        keyExtractor={(item) => item.name}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.routesList}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1976D2" />
+          <Text style={styles.loadingText}>Rotalar yükleniyor...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={routes}
+          renderItem={renderRouteCard}
+          keyExtractor={(item) => item.id.toString()}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.routesList}
+        />
+      )}
     </View>
   );
 };
@@ -159,38 +239,25 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 12,
   },
-  routeDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  difficultyChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-  routeInfo: {
-    fontSize: 12,
-    color: '#999',
-  },
   stopsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   stopChip: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     fontSize: 12,
-    color: '#666',
+    color: '#1976D2',
     marginRight: 8,
-    marginBottom: 8,
+    marginBottom: 4,
+    fontWeight: 'normal',
+    flexShrink: 1,
+    maxWidth: 120
   },
   actionButtons: {
     flexDirection: 'row',
@@ -218,6 +285,22 @@ const styles = StyleSheet.create({
     color: '#1976D2',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  noStopsText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
 });
 

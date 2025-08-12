@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -6,54 +6,124 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { supabase } from '../config/supabase';
 
-const InfluencerRoutesScreen = () => {
-  const data = {
-    influencer: {
-      name: "Gezgin Ayşe",
-      username: "@gezginayse",
-      followers: "125K takipçi",
-      category: "Tarih ve Kültür",
-      image: "https://via.placeholder.com/100",
-      isFollowing: false
-    },
-    route: {
-      title: "Tarihi Dokular Rotası",
-      description: "Şehrimizin en güzel tarihi mekanlarını keşfedin",
-      duration: "4-5 saat",
-      distance: "3.2 km",
-      difficulty: "Orta",
-      rating: 4.8,
-      highlights: [
-        "Tarihi Ulu Cami'nin gizli detayları",
-        "Geleneksel Çarşı'da fotoğraf noktaları",
-        "Antik Kale'den panoramik manzara",
-        "Tarihi Hamam'ın mimari güzellikleri"
-      ],
-      tips: [
-        "Sabah erken saatlerde başlayın, ışık daha güzel",
-        "Tarihi Hamam'da rehberli tur mutlaka alın",
-        "Çarşı'da yerel ustalarla sohbet etmeyi unutmayın"
-      ]
-    }
+const InfluencerRoutesScreen = ({ navigation }) => {
+  const [influencers, setInfluencers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchInfluencers();
+  }, []);
+
+  const handleRouteExplore = (routeId, routeName) => {
+    // Direkt olarak rota detay sayfasına yönlendir
+    navigation.navigate('RouteDetail', { 
+      routeId: routeId,
+      routeName: routeName 
+    });
   };
 
-  const renderStars = (rating) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Icon
-          key={i}
-          name={i <= rating ? "star" : "star-border"}
-          size={16}
-          color={i <= rating ? "#FFD700" : "#ccc"}
-        />
+  const fetchInfluencers = async () => {
+    try {
+      setLoading(true);
+      
+      // Influencerları çek
+      const { data: influencersData, error: influencersError } = await supabase
+        .from('influencerlar')
+        .select('*');
+
+      if (influencersError) {
+        console.error('Influencerlar alınırken hata:', influencersError);
+        Alert.alert('Hata', 'Influencer verileri yüklenemedi');
+        return;
+      }
+
+      // Her influencer için rota ve gezi noktaları bilgilerini çek
+      const influencersWithDetails = await Promise.all(
+        influencersData.map(async (influencer) => {
+          let routeDetails = null;
+          let routeStops = [];
+          let routeTips = [];
+
+          // Influencer'ın bağlı olduğu rotayı çek
+          if (influencer.rota_id) {
+            const { data: routeData, error: routeError } = await supabase
+              .from('rotalar')
+              .select('*')
+              .eq('id', influencer.rota_id)
+              .single();
+
+            if (!routeError && routeData) {
+              routeDetails = routeData;
+              
+              // Rotaya bağlı gezi noktalarını çek
+              if (routeData.gezi_nok_id) {
+                let geziNokIds = [];
+                
+                // gezi_nok_id'yi parse et
+                if (typeof routeData.gezi_nok_id === 'string') {
+                  geziNokIds = routeData.gezi_nok_id.split(',').map(id => id.trim()).filter(id => id);
+                } else if (Array.isArray(routeData.gezi_nok_id)) {
+                  geziNokIds = routeData.gezi_nok_id;
+                } else if (typeof routeData.gezi_nok_id === 'number') {
+                  geziNokIds = [routeData.gezi_nok_id.toString()];
+                }
+
+                if (geziNokIds.length > 0) {
+                  const { data: stopsData, error: stopsError } = await supabase
+                    .from('gezi_noktalari')
+                    .select('id, ad, aciklama')
+                    .in('id', geziNokIds);
+
+                  if (!stopsError && stopsData) {
+                    routeStops = stopsData;
+                  }
+                }
+              }
+
+              // Rotaya bağlı tavsiyeleri çek
+              const { data: tipsData, error: tipsError } = await supabase
+                .from('tavsiyeler')
+                .select('*')
+                .eq('rota_id', influencer.rota_id);
+
+              if (!tipsError && tipsData) {
+                routeTips = tipsData;
+              }
+            }
+          }
+
+          return {
+            ...influencer,
+            routeDetails,
+            routeStops,
+            routeTips
+          };
+        })
       );
+
+      setInfluencers(influencersWithDetails || []);
+    } catch (error) {
+      console.error('Influencer fetch hatası:', error);
+      Alert.alert('Hata', 'Bir hata oluştu');
+    } finally {
+      setLoading(false);
     }
-    return stars;
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#9C27B0" />
+        <Text style={styles.loadingText}>Influencer rotaları yükleniyor...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -69,69 +139,79 @@ const InfluencerRoutesScreen = () => {
         <Text style={styles.tipsText}>Her influencer'ın kendi deneyimlerine dayalı özel tavsiyeleri var...</Text>
       </View>
 
-      {/* Influencer Profile */}
-      <View style={styles.influencerCard}>
-        <View style={styles.profileSection}>
-          <Image source={{ uri: data.influencer.image }} style={styles.profileImage} />
-          <View style={styles.profileInfo}>
-            <Text style={styles.influencerName}>{data.influencer.name}</Text>
-            <Text style={styles.username}>{data.influencer.username}</Text>
-            <Text style={styles.followers}>{data.influencer.followers}</Text>
-            <View style={styles.categoryChip}>
-              <Text style={styles.categoryText}>{data.influencer.category}</Text>
+      {/* Influencer Cards */}
+      {influencers.map((influencer, index) => (
+        <View key={influencer.id || index} style={styles.routeCard}>
+          {/* Influencer Info */}
+          <View style={styles.influencerInfo}>
+            <Image
+              source={influencer.fotograf ? { uri: influencer.fotograf } : require('../../assets/logo.png')}
+              style={styles.influencerImage}
+            />
+            <View style={styles.influencerDetails}>
+              <Text style={styles.influencerName}>{influencer.ad || 'Bilinmeyen Influencer'}</Text>
+              <Text style={styles.influencerDescription}>{influencer.aciklama || 'Açıklama bulunamadı'}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.followButton}>
-            <Text style={styles.followButtonText}>Takip Et</Text>
+
+          {/* Route Details */}
+          {influencer.routeDetails && (
+            <>
+              <Text style={styles.routeTitle}>{influencer.routeDetails.rota_adi || influencer.routeDetails.ad || influencer.routeDetails.name || 'Rota Adı Bulunamadı'}</Text>
+              <Text style={styles.routeDescription}>{influencer.routeDetails.aciklama || 'Açıklama bulunamadı'}</Text>
+              
+              {/* Route Stops */}
+              <View style={styles.highlightsSection}>
+                <Text style={styles.sectionTitle}>Rotadaki Duraklar</Text>
+                {influencer.routeStops.length > 0 ? (
+                  influencer.routeStops.map((stop, stopIndex) => (
+                    <View key={stop.id || stopIndex} style={styles.highlightItem}>
+                      <Icon name="check-circle" size={16} color="#4CAF50" />
+                      <Text style={styles.highlightText}>{stop.ad || stop.name || 'Bilinmeyen Durak'}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.noDataText}>Bu rotaya ait durak bulunamadı</Text>
+                )}
+              </View>
+
+              {/* Tips */}
+              <View style={styles.tipsSection}>
+                <Text style={styles.sectionTitle}>Tavsiyeler</Text>
+                {influencer.routeTips.length > 0 ? (
+                  influencer.routeTips.map((tip, tipIndex) => (
+                    <View key={tip.id || tipIndex} style={styles.tipBox}>
+                      <Text style={styles.tipText}>{tip.tavsiye || tip.aciklama || tip.ad || tip.content || tip.text || 'Tavsiye bulunamadı'}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.tipBox}>
+                    <Text style={styles.tipText}>Bu rota için henüz tavsiye bulunmuyor</Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Start Route Button */}
+          <TouchableOpacity 
+            style={styles.startRouteButton}
+            onPress={() => handleRouteExplore(
+              influencer.routeDetails?.id, 
+              influencer.routeDetails?.rota_adi || influencer.routeDetails?.ad || influencer.routeDetails?.name || 'Rota'
+            )}
+          >
+            <Text style={styles.startRouteButtonText}>Rotayı Keşfet</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      ))}
 
-      {/* Route Details */}
-      <View style={styles.routeCard}>
-        <Text style={styles.routeTitle}>{data.route.title}</Text>
-        <Text style={styles.routeDescription}>{data.route.description}</Text>
-        
-        <View style={styles.routeInfo}>
-          <Text style={styles.routeDuration}>{data.route.duration} • {data.route.distance}</Text>
-          <View style={styles.difficultyChip}>
-            <Text style={styles.difficultyText}>{data.route.difficulty}</Text>
-          </View>
+      {influencers.length === 0 && !loading && (
+        <View style={styles.noDataContainer}>
+          <Icon name="info" size={48} color="#ccc" />
+          <Text style={styles.noDataText}>Henüz influencer rotası bulunmuyor</Text>
         </View>
-
-        <View style={styles.ratingContainer}>
-          <View style={styles.starsContainer}>
-            {renderStars(data.route.rating)}
-          </View>
-          <Text style={styles.ratingText}>{data.route.rating}</Text>
-        </View>
-
-        {/* Highlights */}
-        <View style={styles.highlightsSection}>
-          <Text style={styles.sectionTitle}>Öne Çıkanlar</Text>
-          {data.route.highlights.map((highlight, index) => (
-            <View key={index} style={styles.highlightItem}>
-              <Icon name="check-circle" size={16} color="#4CAF50" />
-              <Text style={styles.highlightText}>{highlight}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Tips */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.sectionTitle}>{data.influencer.name}'in Tavsiyeleri</Text>
-          {data.route.tips.map((tip, index) => (
-            <View key={index} style={styles.tipBox}>
-              <Text style={styles.tipText}>{tip}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Start Route Button */}
-        <TouchableOpacity style={styles.startRouteButton}>
-          <Text style={styles.startRouteButtonText}>Rotayı Başlat</Text>
-        </TouchableOpacity>
-      </View>
+      )}
     </ScrollView>
   );
 };
@@ -170,68 +250,6 @@ const styles = StyleSheet.create({
     color: '#9C27B0',
     marginLeft: 8,
   },
-  influencerCard: {
-    backgroundColor: 'white',
-    margin: 20,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  influencerName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2E5266',
-  },
-  username: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  followers: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 8,
-  },
-  categoryChip: {
-    backgroundColor: '#e3f2fd',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#1976D2',
-    fontWeight: 'bold',
-  },
-  followButton: {
-    backgroundColor: '#9C27B0',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  followButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   routeCard: {
     backgroundColor: 'white',
     margin: 20,
@@ -253,41 +271,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 16,
-  },
-  routeInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  routeDuration: {
-    fontSize: 14,
-    color: '#666',
-  },
-  difficultyChip: {
-    backgroundColor: '#FFC107',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  difficultyText: {
-    fontSize: 12,
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2E5266',
   },
   highlightsSection: {
     marginBottom: 20,
@@ -331,6 +314,53 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  influencerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  influencerImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
+  },
+  influencerDetails: {
+    flex: 1,
+  },
+  influencerName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2E5266',
+    marginBottom: 4,
+  },
+  influencerDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  noDataText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

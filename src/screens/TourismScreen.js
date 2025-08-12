@@ -19,12 +19,13 @@ const TourismScreen = ({ navigation }) => {
   const [geziNoktalari, setGeziNoktalari] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('tarihi');
+  const [selectedCategory, setSelectedCategory] = useState('Tarihi');
 
   const categories = [
-    { id: 'tarihi', name: 'Tarihi', icon: 'account-balance', color: '#8B4513' },
-    { id: 'kültürel', name: 'Kültürel', icon: 'palette', color: '#FF6B35' },
-    { id: 'yeme-içme', name: 'Yeme-İçme', icon: 'restaurant', color: '#4CAF50' },
+    { id: 'Tarihi', name: 'Tarihi', icon: 'account-balance', color: '#825522' },
+    { id: 'Kültürel', name: 'Kültürel', icon: 'palette', color: '#FF6B35' },
+    { id: 'Yeme-İçme', name: 'Yeme-İçme', icon: 'restaurant', color: '#4CAF50' },
+    { id: 'Konaklama', name: 'Konaklama', icon: 'hotel', color: '#1976D2' },
   ];
 
   useEffect(() => {
@@ -54,56 +55,40 @@ const TourismScreen = ({ navigation }) => {
     }
   };
 
-  const getDemoData = () => [
-    {
-      id: 1,
-      ad: 'deneme',
-      aciklama: 'den',
-      kategori: 'tarihi',
-      enlem: 38.0897,
-      boylam: 27.7358,
-      fotograf: null,
-      acilis_saati: '09:00',
-      kapanis_saati: '17:00',
-      telefon_numarasi: '20',
-      adres: 'te'
-    },
-    {
-      id: 2,
-      ad: 'Tire Müzesi',
-      aciklama: 'Tire\'nin tarihi ve kültürel mirasını sergileyen müze',
-      kategori: 'kültürel',
-      enlem: 38.0895,
-      boylam: 27.7360,
-      fotograf: null,
-      acilis_saati: '09:00',
-      kapanis_saati: '17:00',
-      telefon_numarasi: null,
-      adres: 'Tire Merkez'
-    },
-    {
-      id: 3,
-      ad: 'Tire Lokum Evi',
-      aciklama: 'Geleneksel Tire lokumu üretim ve satış yeri',
-      kategori: 'yeme-içme',
-      enlem: 38.0892,
-      boylam: 27.7355,
-      fotograf: null,
-      acilis_saati: '08:00',
-      kapanis_saati: '20:00',
-      telefon_numarasi: null,
-      adres: 'Tire Merkez'
-    }
-  ];
+  
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchGeziNoktalari();
   };
 
-  const filteredGeziNoktalari = geziNoktalari.filter(
-    nokta => nokta.kategori === selectedCategory
-  );
+  const filteredGeziNoktalari = geziNoktalari.filter(nokta => {
+    const canonical = (v) => (v || '').toString().trim().toLowerCase();
+    const selectedCategoryCanonical = canonical(selectedCategory);
+    const placeCategoryCanonical = canonical(nokta.kategori);
+    
+    // Direkt eşleşme kontrolü
+    if (placeCategoryCanonical === selectedCategoryCanonical) {
+      return true;
+    }
+    
+    // Kategori mapping kontrolü
+    const categoryMapping = {
+      'tarihi': ['tarihi', 'tarihi yapı', 'tarihi yer', 'tarihi mekan'],
+      'kültürel': ['kültürel', 'kültür', 'kültür merkezi', 'müze', 'sanat'],
+      'yeme-içme': ['yeme-içme', 'restoran', 'cafe', 'lokanta', 'yemek'],
+      'konaklama': ['konaklama', 'otel', 'hotel', 'pansiyon', 'misafirhane', 'butik otel']
+    };
+    
+    const mappedCategories = categoryMapping[selectedCategoryCanonical];
+    if (mappedCategories) {
+      return mappedCategories.some(mappedCat => 
+        placeCategoryCanonical.includes(mappedCat) || mappedCat.includes(placeCategoryCanonical)
+      );
+    }
+    
+    return false;
+  });
 
   const onSpotPress = (spot) => {
     navigation.navigate('TourismSpotDetail', { spot });
@@ -148,37 +133,38 @@ const TourismScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Gezi Noktaları</Text>
-      </View>
-
       {/* Category Tabs */}
       <View style={styles.categoryTabsContainer}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryTab,
-              selectedCategory === category.id && styles.activeTab
-            ]}
-            onPress={() => setSelectedCategory(category.id)}
-          >
-            <Icon 
-              name={category.icon} 
-              size={18} 
-              color={selectedCategory === category.id ? '#1976D2' : '#666'} 
-            />
-            <Text 
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryTabsScrollContent}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
               style={[
-                styles.categoryTabText,
-                selectedCategory === category.id && styles.activeTabText
+                styles.categoryTab,
+                selectedCategory === category.id && styles.activeTab
               ]}
+              onPress={() => setSelectedCategory(category.id)}
             >
-              {category.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Icon 
+                name={category.icon} 
+                size={18} 
+                color={selectedCategory === category.id ? '#1976D2' : '#666'} 
+              />
+              <Text 
+                style={[
+                  styles.categoryTabText,
+                  selectedCategory === category.id && styles.activeTabText
+                ]}
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {/* Spots List */}
@@ -226,24 +212,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
+    paddingHorizontal: 16,
   },
   categoryTab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 12,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
+    minWidth: 80,
+    flexShrink: 0,
   },
   activeTab: {
     borderBottomColor: '#1976D2',
   },
   categoryTabText: {
     marginLeft: 6,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#666',
+    textAlign: 'center',
   },
   activeTabText: {
     color: '#1976D2',
@@ -315,6 +305,9 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 12,
+  },
+  categoryTabsScrollContent: {
+    alignItems: 'center',
   },
 });
 

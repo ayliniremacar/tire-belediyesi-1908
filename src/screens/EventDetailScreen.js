@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Linking,
   Dimensions,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -18,14 +19,80 @@ const EventDetailScreen = ({ route, navigation }) => {
 
   const openMaps = () => {
     if (event.enlem && event.boylam) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${event.enlem},${event.boylam}`;
-      Linking.openURL(url);
+      const latitude = parseFloat(event.enlem);
+      const longitude = parseFloat(event.boylam);
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        Alert.alert('Hata', 'Geçerli konum bilgisi bulunamadı');
+        return;
+      }
+      
+      // Direkt rota başlamasını engellemek için dir_action=navigate parametresini kaldırdım
+      const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+      
+      Linking.canOpenURL(url).then(supported => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          // Google Maps yoksa web tarayıcısında aç
+          const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+          Linking.openURL(webUrl);
+        }
+      }).catch(err => {
+        console.error('Google Maps açılırken hata:', err);
+        Alert.alert('Hata', 'Google Maps açılamadı');
+      });
+    } else {
+      Alert.alert('Hata', 'Bu etkinlik için yol tarifi mevcut değil');
     }
   };
 
   const openPhone = (phoneNumber) => {
     if (phoneNumber) {
       Linking.openURL(`tel:${phoneNumber}`);
+    }
+  };
+
+  const addToCalendar = () => {
+    try {
+      // Format the event date
+      const eventDate = new Date(event.tarih);
+      const startDate = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      
+      // Create end date (1 hour after start)
+      const endDate = new Date(eventDate.getTime() + 60 * 60 * 1000);
+      const endDateString = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+      // Create calendar URL with event details
+      const calendarUrl = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'BEGIN:VEVENT',
+        `DTSTART:${startDate}`,
+        `DTEND:${endDateString}`,
+        `SUMMARY:${event.ad}`,
+        `DESCRIPTION:${event.aciklama}`,
+        `LOCATION:${event.adres}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\n');
+
+      // Create a data URL for the calendar file
+      const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(calendarUrl)}`;
+      
+      // Try to open the calendar app
+      Linking.openURL(dataUrl).catch(() => {
+        // Fallback: Create a Google Calendar URL
+        const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.ad)}&dates=${startDate}/${endDateString}&details=${encodeURIComponent(event.aciklama)}&location=${encodeURIComponent(event.adres)}`;
+        Linking.openURL(googleCalendarUrl);
+      });
+
+    } catch (error) {
+      Alert.alert(
+        'Hata',
+        'Takvim uygulaması açılamadı. Lütfen cihazınızda bir takvim uygulaması olduğundan emin olun.',
+        [{ text: 'Tamam', style: 'default' }]
+      );
     }
   };
 
@@ -80,9 +147,38 @@ const EventDetailScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Tarih</Text>
-              <Text style={styles.infoValue}>{formatDate(event.tarih)}</Text>
+              <View style={styles.dateTimeContainer}>
+                <Text style={styles.infoValue}>{formatDate(event.tarih)}</Text>
+              </View>
+              {(event.baslama_saati || event.bitis_saati || event.EtkinlikBaslamaTarihi || event.EtkinlikBitisTarihi) && (
+                <Text style={styles.timeText}>
+                  {(() => {
+                    // Önce dönüştürülmüş saat alanlarını kontrol et
+                    if (event.baslama_saati && event.bitis_saati) {
+                      return `${event.baslama_saati} - ${event.bitis_saati}`;
+                    } else if (event.baslama_saati) {
+                      return event.baslama_saati;
+                    } else if (event.bitis_saati) {
+                      return event.bitis_saati;
+                    }
+                    
+                    // Dönüştürülmüş alanlar yoksa orijinal API alanlarını kullan
+                    if (event.EtkinlikBaslamaTarihi && event.EtkinlikBitisTarihi) {
+                      const baslama = new Date(event.EtkinlikBaslamaTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                      const bitis = new Date(event.EtkinlikBitisTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                      return `${baslama} - ${bitis}`;
+                    } else if (event.EtkinlikBaslamaTarihi) {
+                      return new Date(event.EtkinlikBaslamaTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                    } else if (event.EtkinlikBitisTarihi) {
+                      return new Date(event.EtkinlikBitisTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                    }
+                    
+                    return '';
+                  })()}
+                </Text>
+              )}
             </View>
-            <TouchableOpacity style={styles.reminderButton} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.reminderButton} onPress={addToCalendar} activeOpacity={0.7}>
               <Text style={styles.reminderButtonText}>Bana Hatırlat</Text>
             </TouchableOpacity>
           </View>
@@ -102,18 +198,7 @@ const EventDetailScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8}>
-            <Icon name="favorite" size={22} color="white" />
-            <Text style={styles.primaryButtonText}>Favorilere Ekle</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.8}>
-            <Icon name="share" size={22} color="#1976D2" />
-            <Text style={styles.secondaryButtonText}>Paylaş</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </ScrollView>
   );
@@ -241,6 +326,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  dateTimeContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  timeText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 2,
+  },
   actionButtonsContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -291,3 +385,4 @@ const styles = StyleSheet.create({
 });
 
 export default EventDetailScreen;
+

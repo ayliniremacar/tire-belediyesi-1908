@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Linking,
   Dimensions,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -24,19 +25,44 @@ const TourismSpotDetailScreen = ({ route, navigation }) => {
 
   const openMaps = () => {
     if (spot.enlem && spot.boylam) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${spot.enlem},${spot.boylam}`;
-      Linking.openURL(url);
+      const latitude = parseFloat(spot.enlem);
+      const longitude = parseFloat(spot.boylam);
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        Alert.alert('Hata', 'Geçerli konum bilgisi bulunamadı');
+        return;
+      }
+      
+      // Direkt rota başlamasını engellemek için dir_action=navigate parametresini kaldırdım
+      const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+      
+      Linking.canOpenURL(url).then(supported => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          // Google Maps yoksa web tarayıcısında aç
+          const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+          Linking.openURL(webUrl);
+        }
+      }).catch(err => {
+        console.error('Google Maps açılırken hata:', err);
+        Alert.alert('Hata', 'Google Maps açılamadı');
+      });
+    } else {
+      Alert.alert('Hata', 'Bu konum için yol tarifi mevcut değil');
     }
   };
 
   const getCategoryColor = (kategori) => {
     switch (kategori?.toLowerCase()) {
       case 'tarihi':
-        return '#8B4513';
+        return '#825522';
       case 'kültürel':
         return '#FF6B35';
       case 'yeme-içme':
         return '#4CAF50';
+      case 'konaklama':
+        return '#1976D2';
       default:
         return '#2E5266';
     }
@@ -129,15 +155,7 @@ const TourismSpotDetailScreen = ({ route, navigation }) => {
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity 
             style={styles.primaryButton}
-            onPress={() => navigation.navigate('Map', {
-              spot: {
-                ad: spot.ad,
-                aciklama: spot.aciklama,
-                enlem: parseFloat(spot.enlem),
-                boylam: parseFloat(spot.boylam),
-                kategori: spot.kategori
-              }
-            })}
+            onPress={openMaps}
             activeOpacity={0.8}
           >
             <Icon name="directions" size={22} color="white" />
