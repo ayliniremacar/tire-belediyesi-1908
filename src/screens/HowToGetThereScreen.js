@@ -14,7 +14,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 const { width } = Dimensions.get('window');
 
 const HowToGetThereScreen = ({ navigation }) => {
-  const address = "Cumhuriyet, 29 Ekim Caddesi No: 19, 35900 Tire/İzmir";
+  const address = "Yeni Mah. Atatürk Cad No:2 - Kültürel Miras Koruma Müdürlüğü";
   
   const openInGoogleMaps = () => {
     const latitude = 38.08712743777985;
@@ -62,7 +62,7 @@ const HowToGetThereScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Nasıl Gelinir</Text>
-                            <Text style={styles.headerSubtitle}>Tire Belediyesi merkez binasına ulaşım seçenekleri</Text>
+        <Text style={styles.headerSubtitle}>Tire Belediyesi ve Kültürel Miras Koruma Müdürlüğü</Text>
       </View>
 
       {/* Address Box */}

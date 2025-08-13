@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { getWeatherUrl } from '../config/weather';
 
 const HomeScreen = ({ navigation }) => {
-  const municipality = "Tire Belediyesi'";
+  const municipality = "Tire Miras";
   const appVersion = "1.0.15"; // Sürüm bilgisi
   const [weather, setWeather] = useState({
     location: "Tire",
@@ -111,7 +111,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.logoContainer}>
           <Image source={require('../../assets/logoyeni.png')} style={styles.logo} resizeMode="contain" />
         </View>
-        <Text style={styles.headerText}>{municipality}ne{"\n"}Hoşgeldiniz</Text>
+        <Text style={styles.headerText}>{municipality}'a Hoşgeldiniz</Text>
       </View>
 
              {/* Hava Durumu */}
